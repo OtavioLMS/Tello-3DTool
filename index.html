@@ -1,0 +1,159 @@
+<html>
+
+<head>
+    <title>Holoo Library</title>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            color: #33ff33;
+            z-index: 1;
+        }
+
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <script src="js/three.js"></script>
+    <script src="js/tello.js"></script>
+    <script src="js/controls/DragControls.js"></script>
+    <script src="js/controls/OrbitControls.js"></script>
+    <script src="js/controls/TransformControls.js"></script>
+    <script>
+        
+        
+        var positions = new Array();
+        
+        var tello = new Tello(document.getElementById('myCanvas'));
+        var controls = new THREE.OrbitControls(tello.camera);
+        
+        
+        var transformControl = new THREE.TransformControls(tello.camera, tello.renderer.domElement);
+        transformControl.addEventListener('change', function(){tello.render});
+        transformControl.addEventListener('dragging-changed', function (event) {
+            controls.enabled = ! event.value;
+        });
+        tello.scene.add(transformControl);
+        transformControl.addEventListener('change', function () {
+            cancelHideTransform();
+        });
+        transformControl.addEventListener('mouseDown', function () {
+            cancelHideTransform();
+        });
+        transformControl.addEventListener('mouseUp', function () {
+            delayHideTransform();
+        });
+        
+        
+        var dragcontrols = new THREE.DragControls(tello.droneFrames, tello.camera, tello.renderer.domElement );
+        dragcontrols.enabled = false;
+        dragcontrols.addEventListener('hoveron', function(event){
+            transformControl.attach(event.object);
+            cancelHideTransform();
+        });
+        dragcontrols.addEventListener('hoveroff', function(){
+            delayHideTransform();
+        });
+        var hiding;
+        function delayHideTransform(){
+            cancelHideTransform();
+            hideTransform();
+        }
+        function hideTransform(){
+            hiding = setTimeout(function(){
+                transformControl.detach(transformControl.object);
+            }, 2500);
+        }
+        function cancelHideTransform(){
+            if (hiding) clearTimeout(hiding);
+        }
+        
+        render();
+        
+        function render() {
+            controls.update();
+            updateControls();
+            tello.desenharPercurso();
+            tello.renderer.render(tello.scene, tello.camera);
+            requestAnimationFrame(render);
+        };
+        
+        document.onkeydown = function(e) {
+            console.log(e.keyCode);
+            switch (e.keyCode) {
+                case 88: // X - ADICIONAR POSIÇÃO
+                    tello.setPositionFrame();
+                    positions.push(tello.droneMesh.position);
+                    break;
+                case 82: // X - ADICIONAR POSIÇÃO
+                    transformControl.showX = false;
+                    transformControl.showY = true;
+                    transformControl.showZ = false;
+                    transformControl.setMode('rotate');
+                    break;
+                case 69: // X - ADICIONAR POSIÇÃO
+                    updateControls();
+                    transformControl.setMode('translate');
+                    break;
+                case 46: // DELETE - DELETAR POSIÇÃO
+                    positions.pop();
+                    break;
+            }
+        };
+        
+        
+        
+        window.addEventListener('resize', onWindowResize, false);
+        
+        function onWindowResize() {
+            tello.camera.aspect = window.innerWidth / window.innerHeight;
+            tello.camera.updateProjectionMatrix();
+            tello.renderer.setSize( window.innerWidth, window.innerHeight );
+        }
+        
+        function updateControls(){
+            if(positions.length == 0){
+                transformControl.showY = false;
+            } else {
+                if(transformControl.getMode() == 'translate'){
+                    transformControl.showX = true;
+                    transformControl.showY = true;
+                    transformControl.showZ = true;
+                } else if(transformControl.getMode() == 'rotate'){
+                    transformControl.showX = false;
+                    transformControl.showY = true;
+                    transformControl.showZ = false;
+                }
+            }
+            if(tello.droneMesh.position.y <= 0.5){
+                tello.droneMesh.position.y = 1;
+            }
+            if(tello.droneMesh.position.y >= 40){
+                tello.droneMesh.position.y = 39;
+            }
+            if(tello.droneMesh.position.x <= -50){
+                tello.droneMesh.position.x = -49;
+            }
+            if(tello.droneMesh.position.x >= 50){
+                tello.droneMesh.position.x = 49;
+            }
+            if(tello.droneMesh.position.z <= -50){
+                tello.droneMesh.position.z = -49;
+            }
+            if(tello.droneMesh.position.z >= 50){
+                tello.droneMesh.position.z = 49;
+            }
+        }
+        
+    </script>
+</body>
+
+</html>
