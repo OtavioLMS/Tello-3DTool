@@ -30,7 +30,7 @@ class Tello {
 
         //SCENE
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color( 0xf0f0f0 );
+        this.scene.background = new THREE.Color(0xf0f0f0);
         this.droneFrames = new Array();
         this.novaCamera();
         this.novoDrone();
@@ -103,16 +103,29 @@ class Tello {
        object.rotateY(THREE.Math.degToRad(degreeY));
        object.rotateZ(THREE.Math.degToRad(degreeZ));
     }
-    setPositionFrame() {
+    setPositionFrame(cor){
         var geometry = new THREE.CubeGeometry(8, 2, 8);
         var material = new THREE.MeshPhysicalMaterial({
-            color: 0x32A400
+            color: cor,
+            transparent: true,
+            opacity: 0.4
+//            color: 0x32A400
         });
         let frameDrone = new THREE.Mesh(geometry, material);
         frameDrone.position.set(this.droneMesh.position.x, this.droneMesh.position.y, this.droneMesh.position.z);
         frameDrone.rotation.set(this.droneMesh.rotation.x, this.droneMesh.rotation.y, this.droneMesh.rotation.z);
         let pos = this.droneFrames.push(frameDrone) - 1;
         this.scene.add(this.droneFrames[pos]);
+    }
+    deletePositionFrame(){
+        this.scene.remove(this.droneFrames[this.droneFrames.length - 1]);
+        this.droneFrames.pop();
+    }
+    deleteAllFrames(){
+        for(let i = this.droneFrames.length - 1; i > 0; i--){
+            this.scene.remove(this.droneFrames[i]);
+            this.droneFrames.pop();
+        }
     }
     desenharPercurso(){
         let obj = this.scene.getObjectByName('percurso');

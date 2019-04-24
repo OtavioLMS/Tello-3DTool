@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Holoo Library</title>
+    <title>Tello 3D Tool</title>
 
     <style>
         body {
@@ -28,7 +28,7 @@
     <script src="js/controls/OrbitControls.js"></script>
     <script src="js/controls/TransformControls.js"></script>
     <script>
-        
+        var cor = 0xA44400;
         
         var positions = new Array();
         
@@ -52,8 +52,10 @@
             delayHideTransform();
         });
         
+        var objs = [];
+        objs.push(tello.droneFrames[0]);
         
-        var dragcontrols = new THREE.DragControls(tello.droneFrames, tello.camera, tello.renderer.domElement );
+        var dragcontrols = new THREE.DragControls(objs, tello.camera, tello.renderer.domElement );
         dragcontrols.enabled = false;
         dragcontrols.addEventListener('hoveron', function(event){
             transformControl.attach(event.object);
@@ -90,21 +92,52 @@
             console.log(e.keyCode);
             switch (e.keyCode) {
                 case 88: // X - ADICIONAR POSIÇÃO
-                    tello.setPositionFrame();
-                    positions.push(tello.droneMesh.position);
+                    if(tello.droneFrames.length == 1){
+                        tello.setPositionFrame(cor);
+                        positions.push(tello.droneMesh.position);
+                    } else if(tello.droneFrames[tello.droneFrames.length - 1].position.y <= 1 && tello.droneMesh.position.y <= 1){
+                        tello.droneMesh.position.y = 10;
+                        tello.setPositionFrame(cor);
+                        positions.push(tello.droneMesh.position);
+                    } else {
+                        tello.setPositionFrame(cor);
+                        positions.push(tello.droneMesh.position);
+                    }
+                    cor += 5;
                     break;
-                case 82: // X - ADICIONAR POSIÇÃO
-                    transformControl.showX = false;
-                    transformControl.showY = true;
-                    transformControl.showZ = false;
-                    transformControl.setMode('rotate');
+                case 82: // R - MODO ROTATE
+                    if(tello.droneFrames.length > 1){
+                        transformControl.showX = false;
+                        transformControl.showY = true;
+                        transformControl.showZ = false;
+                        transformControl.setMode('rotate');
+                    }
                     break;
-                case 69: // X - ADICIONAR POSIÇÃO
+                case 69: // E - MODO TRANSLATE
                     updateControls();
                     transformControl.setMode('translate');
                     break;
                 case 46: // DELETE - DELETAR POSIÇÃO
-                    positions.pop();
+                    if(tello.droneFrames.length >= 2){
+                        tello.deletePositionFrame();
+                        positions.pop();
+                    }
+                    if(tello.droneFrames.length == 1){
+                        tello.droneMesh.position.y = 1;
+                    }
+                    break;
+                case 67: // C - CENTRALIZAR
+                    tello.droneMesh.position.x = 0;
+                    tello.droneMesh.position.z = 0;
+                    tello.droneMesh.rotation.y = 0;
+                    break;
+                case 76: // L - LIMPAR
+                    tello.deleteAllFrames();
+                    positions = [];
+                    tello.droneMesh.position.y = 1;
+                    tello.droneMesh.position.x = 0;
+                    tello.droneMesh.position.z = 0;
+                    tello.droneMesh.rotation.y = 0;
                     break;
             }
         };
