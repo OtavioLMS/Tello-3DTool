@@ -1,9 +1,9 @@
 # Tello 3DTool
-### O que é
+## O que é
 
 Esta é uma ferramenta 3D desenvolvida em Three.js para criação de percursos e execução do trajeto no drone Tello.
 
-### Falta desenvolver
+## O que falta desenvolver
 
 - [x] Criar uma interface para facilitar o controle
 - [x] Opção "Simular" animado
