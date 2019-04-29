@@ -2,74 +2,107 @@
 
 <head>
     <title>Tello 3D Tool</title>
-
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        
-        canvas {
-            width: 100%;
-            height: 100%;
-            color: #33ff33;
-            z-index: 1;
-        }
-        
-        #instructions {
-            z-index: 99;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            padding: 10px;
-            background: #33a0ff33;
-        }
-
-        p {
-            color: black;
-            line-height: 10px;
-            margin: 8px 0px;
-            font-family: 'Inconsolata', monospace;
-        }
-    </style>
+    <link href="css/style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
 </head>
 
 <body>
     <canvas id="myCanvas"></canvas>
     <div id="instructions">
-        <p><b>E</b> - MOVER</p>
-        <p><b>R</b> - ROTACIONAR</p>
-        <p><b>X</b> - ADICIONAR POSIÇÃO</p>
-        <p><b>L</b> - LIMPAR TUDO</p>
-        <p><b>C</b> - CENTRALIZAR</p>
-        <p><b>A</b> - SIMULAR</p>
-        <p><b>V</b> - REPOSICIONAR CÂMERA</p>
-        <p><b>DEL</b> - DELETAR ÚLTIMO PONTO</p>
+        <i class="ico fas fa-info fa-lg"></i>
+<!--        <i class="ico far fa-question-circle fa-lg"></i>-->
+        <div class="content">
+            <p><b>E</b> - MOVER</p>
+            <p><b>R</b> - ROTACIONAR</p>
+            <p><b>X</b> - ADICIONAR POSIÇÃO</p>
+            <p><b>L</b> - LIMPAR TUDO</p>
+            <p><b>C</b> - CENTRALIZAR</p>
+            <p><b>A</b> - SIMULAR</p>
+            <p><b>P</b> - PARAR SIMULAÇÃO</p>
+            <p><b>+</b> - MAIS TEMPO</p>
+            <p><b>-</b> - MENOS TEMPO</p>
+            <p><b>V</b> - REPOSICIONAR CÂMERA</p>
+            <p><b>DEL</b> - DELETAR ÚLTIMO PONTO</p>
+        </div>
     </div>
+    <div id="states">
+        <div id="state">
+            <i id="icoStop" class="ico far fa-stop-circle fa-lg"></i>
+            <i id="icoPlay" class="ico far fa-play-circle fa-lg oculto"></i>
+        </div>
+        <div id="state">
+            <i id="icoUnlink" class="ico fas fa-unlink"></i>
+            <i id="icoLink" class="ico fas fa-link fa-lg oculto"></i>
+        </div>
+    </div>
+    <div id="times">
+        <p id="transition"></p>
+        <p id="stopped"></p>
+    </div>
+    <div id="frames">
+        <div class="frameOptions">
+            <button id="btn_clearAll" class="framesTools oculto" onclick="clearAll();"><i class="ico fas fa-broom fa-lg"></i></button>
+            <button id="btn_newFrame" class="framesTools" onclick="newFrame();"><i class="ico fas fa-plus fa-lg"></i></button>
+        </div>
+    </div>
+    <script src="js/drone.js"></script>
     <script src="js/three.js"></script>
     <script src="js/tello.js"></script>
+    <script src="js/functions.js"></script>
     <script src="js/controls/DragControls.js"></script>
     <script src="js/controls/OrbitControls.js"></script>
     <script src="js/controls/TransformControls.js"></script>
     <script>
+//====================== VARIÁVEIS DE ESTADO E PROPRIEDADES ======================
         var cor = 0xA44400;
         
         var transitionTime = 600;
+        var timeStopped = 1000;
         
         var simulating = false;
         
         var positions = new Array();
         
+        var lerpAnimation = null;
+        
+        var objs = [];
+        var hiding;
+        
+//====================== ELEMENTS ======================
+        var ico_Stop = document.getElementById("icoStop");
+        var ico_Play = document.getElementById("icoPlay");
+        
+        var p_stopped = document.getElementById("stopped");
+        var p_transition = document.getElementById("transition");
+        var p_state = document.getElementById("state");
+        
+        var div_frames = document.getElementById("frames");
+        var btn_newFrame = document.getElementById("btn_newFrame");
+        var btn_clearAll = document.getElementById("btn_clearAll");
+        
         var tello = new Tello(document.getElementById('myCanvas'));
         var controls = new THREE.OrbitControls(tello.camera);
         
+//====================== CONTROLS ======================
         var transformControl = new THREE.TransformControls(tello.camera, tello.renderer.domElement);
+        var dragcontrols = new THREE.DragControls(objs, tello.camera, tello.renderer.domElement);
+        
+//====================== FUNCTIONS ======================
+        tello.scene.add(transformControl);
+        objs.push(tello.droneFrames[0]);
+        
+        dragcontrols.enabled = false;
+        
+        render();
+        
+//====================== LISTENERS ======================
+//        ----- TRANSFORM CONTROLS -----
         transformControl.addEventListener('change', function(){tello.render});
         transformControl.addEventListener('dragging-changed', function (event) {
             controls.enabled = ! event.value;
         });
-        tello.scene.add(transformControl);
+
         transformControl.addEventListener('change', function () {
             cancelHideTransform();
         });
@@ -79,12 +112,8 @@
         transformControl.addEventListener('mouseUp', function () {
             delayHideTransform();
         });
-        
-        var objs = [];
-        objs.push(tello.droneFrames[0]);
-        
-        var dragcontrols = new THREE.DragControls(objs, tello.camera, tello.renderer.domElement);
-        dragcontrols.enabled = false;
+
+//        ----- DRAG CONTROLS -----
         dragcontrols.addEventListener('hoveron', function(event){
             transformControl.attach(event.object);
             cancelHideTransform();
@@ -92,208 +121,10 @@
         dragcontrols.addEventListener('hoveroff', function(){
             delayHideTransform();
         });
-        var hiding;
-        function delayHideTransform(){
-            cancelHideTransform();
-            hideTransform();
-        }
-        function hideTransform(){
-            hiding = setTimeout(function(){
-                transformControl.detach(transformControl.object);
-            }, 2500);
-        }
-        function cancelHideTransform(){
-            if (hiding) clearTimeout(hiding);
-        }
         
-        render();
-        
-        function render() {
-            controls.update();
-            updateControls();
-            tello.desenharPercurso();
-            tello.renderer.render(tello.scene, tello.camera);
-            requestAnimationFrame(render);
-        };
-        
-        document.onkeydown = function(e) {
-            console.log(e.keyCode);
-            switch (e.keyCode) {
-                case 88: // X - ADICIONAR POSIÇÃO
-                    if(tello.droneFrames.length == 1){
-                        tello.setPositionFrame(cor);
-                        positions.push(tello.droneMesh.position);
-                    } else if(tello.droneFrames[tello.droneFrames.length - 1].position.y <= 2 && tello.droneMesh.position.y <= 2    ){
-                        tello.droneMesh.position.y = 10;
-                        tello.setPositionFrame(cor);
-                        positions.push(tello.droneMesh.position);
-                    } else {
-                        tello.setPositionFrame(cor);
-                        positions.push(tello.droneMesh.position);
-                    }
-                    cor += 5;
-                    break;
-                case 82: // R - MODO ROTATE
-                    if(tello.droneFrames.length > 1){
-                        transformControl.showX = false;
-                        transformControl.showY = true;
-                        transformControl.showZ = false;
-                        transformControl.setMode('rotate');
-                    }
-                    break;
-                case 69: // E - MODO TRANSLATE
-                    updateControls();
-                    transformControl.setMode('translate');
-                    break;
-                case 46: // DELETE - DELETAR POSIÇÃO
-                    if(tello.droneFrames.length >= 2){
-                        tello.deletePositionFrame();
-                        positions.pop();
-                    }
-                    if(tello.droneFrames.length == 1){
-                        tello.droneMesh.position.y = 1;
-                    }
-                    break;
-                case 67: // C - CENTRALIZAR
-                    tello.droneMesh.position.x = 0;
-                    tello.droneMesh.position.z = 0;
-                    tello.droneMesh.rotation.y = 0;
-                    break;
-                case 86: // V - REPOSICIONAR CÂMERA
-                    tello.camera.position.set(0,30,-100);
-                    break;
-                case 76: // L - LIMPAR
-                    tello.deleteAllFrames();
-                    positions = [];
-                    tello.droneMesh.position.y = 1;
-                    tello.droneMesh.position.x = 0;
-                    tello.droneMesh.position.z = 0;
-                    tello.droneMesh.rotation.y = 0;
-                    break;
-                case 65: // A - LERP POSITION
-                    if(tello.droneFrames.length > 2){
-                        simulate();
-                        simulating = true;
-                    }
-                    break;
-            }
-        };
-        
-        function simulate(){
-            var i = 2;
-            tello.droneMesh.position.x = tello.droneFrames[1].position.x;
-            tello.droneMesh.position.y = tello.droneFrames[1].position.y;
-            tello.droneMesh.position.z = tello.droneFrames[1].position.z;
-            tello.droneMesh.rotation.y = tello.droneFrames[1].rotation.y;
-            
-            lerpPosition(tello.droneMesh, tello.droneFrames[i], transitionTime, i);
-        }
-            
-        function lerpPosition(obj, frame, time, number){
-            var dist_x = 0,
-                dist_y = 0,
-                dist_z = 0,
-                dist_r_y = 0,
-                inc_x = 0,
-                inc_y = 0,
-                inc_z = 0,
-                inc_r_y = 0,
-                lp_x = false,
-                lp_y = false,
-                lp_z = false;
-                lp_r_y = false;
-            
-            if(obj.position.x != frame.position.x){
-                dist_x = frame.position.x - obj.position.x;
-                inc_x = dist_x / time;
-            }
-            if(obj.position.y != frame.position.y){
-                dist_y = frame.position.y - obj.position.y;
-                inc_y = dist_y / time;
-            }
-            if(obj.position.z != frame.position.z){
-                dist_z = frame.position.z - obj.position.z;
-                inc_z = dist_z / time;
-            }
-//            if(obj.rotation.y != frame.rotation.y){
-//                dist_r_y = THREE.Math.radToDeg(frame.rotation.y) - THREE.Math.radToDeg(obj.rotation.y);
-//                inc_r_y = dist_r_y / time;
-//            }
-            
-            var lerpAnimation = setInterval(function(number){
-                obj.position.x += inc_x;
-                obj.position.y += inc_y;
-                obj.position.z += inc_z;
-//                obj.rotation.y += inc_r_y;
-//                obj.rotateY(THREE.Math.degToRad(inc_r_y));
-                var th_pos = 0.2;
-                console.log('loop');
-                if(
-                    (obj.position.x >= frame.position.x - th_pos && obj.position.x <= frame.position.x + th_pos) &&
-                    (obj.position.y >= frame.position.y - th_pos && obj.position.y <= frame.position.y + th_pos) &&
-                    (obj.position.z >= frame.position.z - th_pos && obj.position.z <= frame.position.z + th_pos)
-//                    &&(obj.rotation.y >= frame.rotation.y - th_pos-2 && obj.rotation.y <= frame.rotation.y + th_pos+2)
-                ){
-                    obj.position.x = frame.position.x;
-                    obj.position.y = frame.position.y;
-                    obj.position.z = frame.position.z;
-//                    obj.rotation.y = frame.rotation.y;
-                    clearInterval(lerpAnimation);
-                    number = number + 1;
-                    if(number < tello.droneFrames.length){
-                        lerpPosition(obj, tello.droneFrames[number], time, number);
-                    } else {
-                        simulating = false;
-                    }
-                }
-            }, 1, number);
-        }
-        
+//        ----- WINDOW E DOCUMENT -----
         window.addEventListener('resize', onWindowResize, false);
-        
-        function onWindowResize() {
-            tello.camera.aspect = window.innerWidth / window.innerHeight;
-            tello.camera.updateProjectionMatrix();
-            tello.renderer.setSize( window.innerWidth, window.innerHeight );
-        }
-        
-        function updateControls(){
-            if(simulating){
-                transformControl.showX = false;
-                transformControl.showY = false;
-                transformControl.showZ = false;
-            } else if(positions.length == 0){
-                transformControl.showY = false;
-            } else {
-                if(transformControl.getMode() == 'translate'){
-                    transformControl.showX = true;
-                    transformControl.showY = true;
-                    transformControl.showZ = true;
-                } else if(transformControl.getMode() == 'rotate'){
-                    transformControl.showX = false;
-                    transformControl.showY = true;
-                    transformControl.showZ = false;
-                }
-            }
-            if(tello.droneMesh.position.y <= 0.5){
-                tello.droneMesh.position.y = 1;
-            }
-            if(tello.droneMesh.position.y >= 40){
-                tello.droneMesh.position.y = 39;
-            }
-            if(tello.droneMesh.position.x <= -50){
-                tello.droneMesh.position.x = -49;
-            }
-            if(tello.droneMesh.position.x >= 50){
-                tello.droneMesh.position.x = 49;
-            }
-            if(tello.droneMesh.position.z <= -50){
-                tello.droneMesh.position.z = -49;
-            }
-            if(tello.droneMesh.position.z >= 50){
-                tello.droneMesh.position.z = 49;
-            }
-        }
+        document.addEventListener('keyup', onKeyUp, false);
         
     </script>
 </body>

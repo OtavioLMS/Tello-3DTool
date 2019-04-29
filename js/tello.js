@@ -66,7 +66,7 @@ class Tello {
         this.scene.add(ambient_light);
 
         var light = new THREE.SpotLight( 0xffffff, 1.5 );
-        light.position.set( 0, 150, 20);
+        light.position.set(0, 150, 20);
         light.castShadow = true;
         light.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 70, 1, 200, 2000 ) );
         light.shadow.bias = - 0.000222;
@@ -105,6 +105,9 @@ class Tello {
     }
     setPositionFrame(cor){
         var geometry = new THREE.CubeGeometry(8, 2, 8);
+        if(this.droneMesh.position.y <= 1.5){
+            cor = 0x30A2D8;
+        }
         var material = new THREE.MeshPhysicalMaterial({
             color: cor,
             transparent: true,
@@ -114,12 +117,14 @@ class Tello {
         let frameDrone = new THREE.Mesh(geometry, material);
         frameDrone.position.set(this.droneMesh.position.x, this.droneMesh.position.y, this.droneMesh.position.z);
         frameDrone.rotation.set(this.droneMesh.rotation.x, this.droneMesh.rotation.y, this.droneMesh.rotation.z);
+//        console.log('Rotation - RAD:' + this.droneMesh.rotation.y + ' | Deg: ' + THREE.Math.radToDeg(this.droneMesh.rotation.y));
         let pos = this.droneFrames.push(frameDrone) - 1;
         this.scene.add(this.droneFrames[pos]);
     }
-    deletePositionFrame(){
-        this.scene.remove(this.droneFrames[this.droneFrames.length - 1]);
-        this.droneFrames.pop();
+    deletePositionFrame(number){
+        this.scene.remove(this.droneFrames[number]);
+//        this.droneFrames.pop();
+        this.droneFrames.splice(number, 1);
     }
     deleteAllFrames(){
         for(let i = this.droneFrames.length - 1; i > 0; i--){
