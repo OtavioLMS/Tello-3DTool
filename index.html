@@ -18,8 +18,7 @@
             <p><b>X</b> - ADICIONAR POSIÇÃO</p>
             <p><b>L</b> - LIMPAR TUDO</p>
             <p><b>C</b> - CENTRALIZAR</p>
-            <p><b>A</b> - SIMULAR</p>
-            <p><b>P</b> - PARAR SIMULAÇÃO</p>
+            <p><b>A</b> - SIMULAR/PARAR</p>
             <p><b>+</b> - MAIS TEMPO</p>
             <p><b>-</b> - MENOS TEMPO</p>
             <p><b>V</b> - REPOSICIONAR CÂMERA</p>
@@ -28,8 +27,12 @@
     </div>
     <div id="states">
         <div id="state">
-            <i id="icoStop" class="ico far fa-stop-circle fa-lg"></i>
-            <i id="icoPlay" class="ico far fa-play-circle fa-lg oculto"></i>
+            <button id="btn_executar" onclick="execute();"><i id="icoRPlay" class="ico fas fa-play fa-lg"></i><i id="icoRStop" class="ico fas fa-stop fa-lg oculto"></i></button>
+        </div>
+        <div id="state">
+            <button id="btn_simular" onclick="switchSimulate()"><i id="icoStop" class="ico far fa-stop-circle fa-lg oculto"></i>
+            <i id="icoPlay" class="ico far fa-play-circle fa-lg"></i></button>
+            
         </div>
         <div id="state">
             <i id="icoUnlink" class="ico fas fa-unlink"></i>
@@ -53,14 +56,22 @@
     <script src="js/controls/DragControls.js"></script>
     <script src="js/controls/OrbitControls.js"></script>
     <script src="js/controls/TransformControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>
     <script>
+        const socket = io('http://localhost:9000');
+        socket.on('connect', function(msg){
+            connected = true;
+        });
+        
 //====================== VARIÁVEIS DE ESTADO E PROPRIEDADES ======================
-        var cor = 0xA44400;
+        var cor = 0x3344AA;
         
         var transitionTime = 600;
         var timeStopped = 1000;
         
         var simulating = false;
+        var connected = false;
+        var running = false;
         
         var positions = new Array();
         
@@ -72,6 +83,12 @@
 //====================== ELEMENTS ======================
         var ico_Stop = document.getElementById("icoStop");
         var ico_Play = document.getElementById("icoPlay");
+        
+        var ico_RStop = document.getElementById("icoRStop");
+        var ico_RPlay = document.getElementById("icoRPlay");
+        
+        var ico_Unlink = document.getElementById("icoUnlink");
+        var ico_Link = document.getElementById("icoLink");
         
         var p_stopped = document.getElementById("stopped");
         var p_transition = document.getElementById("transition");
@@ -98,6 +115,7 @@
         
 //====================== LISTENERS ======================
 //        ----- TRANSFORM CONTROLS -----
+        transformControl.setTranslationSnap(1);
         transformControl.addEventListener('change', function(){tello.render});
         transformControl.addEventListener('dragging-changed', function (event) {
             controls.enabled = ! event.value;

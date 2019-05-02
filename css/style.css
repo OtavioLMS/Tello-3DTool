@@ -172,7 +172,7 @@ button.framesTools:hover .pframe {
     top: 10px;
     right: 10px;
     background: none;
-    width: 100px;
+    width: 200px;
     height: 40px;
 }
 
@@ -195,4 +195,14 @@ button.framesTools:hover .pframe {
 }
 
 
-
+#state button {
+    background: none;
+    border: none;
+    width: 40px;
+    height: 40px;
+    margin: -10px;
+}
+#state button:active {
+    background: #bbb;
+    opacity: 1;
+}

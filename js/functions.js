@@ -15,13 +15,7 @@ function cancelHideTransform(){
 function render() {
     p_transition.innerHTML = '<b>TRANSIÇÃO</b> - ' + transitionTime;
     p_stopped.innerHTML = '<b>PARADO</b> - ' + timeStopped;
-    if(simulating){
-        ico_Play.classList.remove('oculto');
-        ico_Stop.classList.add('oculto');
-    } else {
-        ico_Stop.classList.remove('oculto');
-        ico_Play.classList.add('oculto');
-    }
+    updateIcons();
     controls.update();
     updateControls();
     tello.desenharPercurso();
@@ -29,7 +23,44 @@ function render() {
     requestAnimationFrame(render);
 };
 
+//====================== ATUALIZAR ÍCONES ======================
+function updateIcons(){
+    if(simulating){
+        ico_Stop.classList.remove('oculto');
+        ico_Play.classList.add('oculto');
+    } else {
+        ico_Play.classList.remove('oculto');
+        ico_Stop.classList.add('oculto');
+    }
+    if(connected){
+        ico_Link.classList.remove('oculto');
+        ico_Unlink.classList.add('oculto');
+    } else {
+        ico_Unlink.classList.remove('oculto');
+        ico_Link.classList.add('oculto');
+    }
+    if(running){
+        ico_RStop.classList.remove('oculto');
+        ico_RPlay.classList.add('oculto');
+    } else {
+        ico_RPlay.classList.remove('oculto');
+        ico_RStop.classList.add('oculto');
+    }
+}
+
 //====================== SIMULAÇÃO ======================
+function switchSimulate(){
+    if(!simulating){
+        if(tello.droneFrames.length > 2){
+            simulate();
+            simulating = true;
+        }
+    } else {
+        simulating = false;
+        clearInterval(lerpAnimation);
+    }
+}
+
 function simulate(){
     var i = 2;
     tello.droneMesh.position.x = tello.droneFrames[1].position.x;
@@ -146,14 +177,8 @@ function onKeyUp(e) {
             clearAll();
             break;
         case 65: // A - SIMULAR
-            if(tello.droneFrames.length > 2){
-                simulate();
-                simulating = true;
-            }
-            break;
-        case 80: // P - PAUSAR SIMULAÇÃO
-            simulating = false;
-            clearInterval(lerpAnimation);
+//            startSimulate();
+            switchSimulate();
             break;
         case 187: // + - MAIS TEMPO
             timeStopped += 100;
@@ -213,18 +238,107 @@ function moveToLimits(){
 function newFrame(){
     if(!simulating){
         moveToLimits();
+        let frame_prototype = {
+            'command':'',
+            'position':null
+        }
+        let position = null;
+        if(tello.droneMesh.position.y <= 1.5){
+            cor = 0x44AA66;
+        }
         if(tello.droneFrames.length == 1){
-            tello.setPositionFrame(cor);
-            positions.push(tello.droneMesh.position);
+            position = tello.setPositionFrame(cor);
+            
+            tello.droneMesh.position.y = 10;
+            cor = 0xFF5533;
+            position = tello.setPositionFrame(cor);
+            
+            let frameCopy = Object.assign({}, frame_prototype);
+            frameCopy.command = 'takeoff';
+            frameCopy.position = tello.droneFrames[position].position;
+            positions.push(frameCopy);
         } else if(tello.droneFrames[tello.droneFrames.length - 1].position.y <= 2 && tello.droneMesh.position.y <= 2){
             tello.droneMesh.position.y = 10;
-            tello.setPositionFrame(cor);
-            positions.push(tello.droneMesh.position);
+            if(tello.droneMesh.position.y <= 1.5){
+                cor = 0x44AA66;
+            } else {
+                cor = 0x3344AA;
+            }
+            frameCopy = Object.assign({}, frame_prototype);
+            frameCopy.command = 'takeoff';
+            position = tello.setPositionFrame(cor);
+            frameCopy.position = tello.droneFrames[position].position;
+            positions.push(frameCopy);
+        } else if(tello.droneFrames[tello.droneFrames.length - 1].position.y >= 2 && tello.droneMesh.position.y <= 2){
+            tello.droneMesh.position.y = 1;
+            if(tello.droneMesh.position.y <= 1.5){
+                cor = 0xFF00FF;
+            }
+            frameCopy = Object.assign({}, frame_prototype);
+            frameCopy.command = 'land';
+            position = tello.setPositionFrame(cor);
+            frameCopy.position = tello.droneFrames[position].position;
+            positions.push(frameCopy);
+        } else if(tello.droneFrames[tello.droneFrames.length - 1].position.y <= 2 && tello.droneMesh.position.y >= 2){
+            cor = 0xFF5533;
+            let pf_x = tello.droneFrames[tello.droneFrames.length - 1].position.x;
+            let pf_y = 10;
+            let pf_z = tello.droneFrames[tello.droneFrames.length - 1].position.z;
+            
+            frameCopy = Object.assign({}, frame_prototype);
+            frameCopy.command = 'takeoff';
+            frameCopy.position = new THREE.Vector3(pf_x, pf_y, pf_z);
+            position = tello.setPositionFrame(cor, frameCopy.position);
+            positions.push(frameCopy);
+            
+            cor = 0x3344AA;
+            frameCopy = Object.assign({}, frame_prototype);
+            
+            let lpf_x = tello.droneFrames[tello.droneFrames.length - 1].position.x;
+            let lpf_y = tello.droneFrames[tello.droneFrames.length - 1].position.y;
+            let lpf_z = tello.droneFrames[tello.droneFrames.length - 1].position.z;
+            
+            position = tello.setPositionFrame(cor);
+            let dif_x = (lpf_x - tello.droneFrames[position].position.x) * 2;
+            let dif_y = (tello.droneFrames[position].position.y - lpf_y) * 2;
+            let dif_z = (lpf_z - tello.droneFrames[position].position.z) * 2;
+            
+            
+            
+            frameCopy.position = tello.droneFrames[position].position;
+            // GO X Y Z SPEED
+            // GO FRENTE LADO CIMA VELOCIDADE
+            frameCopy.command = 'go ' + dif_z + ' ' + dif_x + ' ' + dif_y + ' 30';
+            positions.push(frameCopy);
         } else {
-            tello.setPositionFrame(cor);
-            positions.push(tello.droneMesh.position);
+            if(tello.droneMesh.position.y <= 1.5){
+                cor = 0x44AA66;
+            } else {
+                cor = 0x3344AA;
+            }
+            
+            let lpf_x = tello.droneFrames[tello.droneFrames.length - 1].position.x;
+            let lpf_y = tello.droneFrames[tello.droneFrames.length - 1].position.y;
+            let lpf_z = tello.droneFrames[tello.droneFrames.length - 1].position.z;
+            
+            position = tello.setPositionFrame(cor);
+            frameCopy = Object.assign({}, frame_prototype);
+            frameCopy.position = tello.droneFrames[position].position;
+            
+            let dif_x = (lpf_x - tello.droneFrames[position].position.x) * 2;
+            let dif_y = (tello.droneFrames[position].position.y - lpf_y) * 2;
+            let dif_z = (lpf_z - tello.droneFrames[position].position.z) * 2;
+            
+            
+            frameCopy.position = tello.droneFrames[position].position;
+            frameCopy.command = 'go ' + dif_z + ' ' + dif_x + ' ' + dif_y + ' 30';
+            
+//            frameCopy.command = 'go ' + frameCopy.position.x + ' ' + frameCopy.position.y + ' ' + frameCopy.position.z + ' 30';
+            positions.push(frameCopy);
         }
-//        cor += 5;
+    }
+    for(comando in positions){
+        console.log('| ' + comando + ' | ' + positions[comando].command);
     }
     updateFrameList();
 }
@@ -242,6 +356,21 @@ function clearAll(){
     updateFrameList();
 }
 
+//====================== EXECUTAR ======================
+function execute(){
+    if(!running){
+        socket.emit('executar', {'commands': positions});
+        running = true;
+    } else {
+        socket.emit('emergency');
+        running = false;
+    }
+    updateFrameList();
+}
+
+
+            
+
 //====================== ATUALIZAR LISTA DE FRAMES ======================
 function updateFrameList(){
     var result = '';
@@ -252,7 +381,7 @@ function updateFrameList(){
     for(frame in tello.droneFrames){
         if(frame >= 1){
             result += '<div class="frameOptions">';
-            result += '    <button id="' + frame + '" class="framesTools"><p class="pframe">' + frame + '</p><i class="far fa-edit fa-lg frameIco"></i></button>';
+            result += '    <button id="' + frame + '" class="framesTools" onclick="editItem(' + frame + ');"><p class="pframe">' + frame + '</p><i class="far fa-edit fa-lg frameIco"></i></button>';
             result += '    <button id="' + frame + '" class="framesTools oculto" onclick="removeItem(' + frame + ');"><p class="pframe">' + frame + '</p><i class="far fa-trash-alt fa-lg frameIco"></i></button>';
             result += '</div>';
         }
@@ -277,6 +406,14 @@ function removeItem(number){
         if(tello.droneFrames.length == 1){
             tello.droneMesh.position.y = 1;
         }
+    }
+    updateFrameList();
+}
+
+//====================== EDITAR FRAME ======================
+function editItem(number){
+    if(!simulating){
+        console.log('VAMOS EDITAR - ' + number);
     }
     updateFrameList();
 }
